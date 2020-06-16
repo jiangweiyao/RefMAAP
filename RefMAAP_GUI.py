@@ -29,6 +29,7 @@ def main():
 
     parser = cli.add_argument_group("Optional Arguments", gooey_options={'columns': 2, 'show_border': True})
     parser.add_argument('--TopN', help="Keep top N of the amplicon clusters generated from cdhit ", type=int, required=False, default=1)
+    parser.add_argument('--MinCov', help="Amplicon regions need a minimum of this average coverage number", type=int, required=False, default=10)
     parser.add_argument('--verbose', help = "Keep Intermediate Files", required=False, widget='BlockCheckbox', action='store_true', gooey_options={ 'checkbox_label': "Yes" })
     parser.add_argument('--model', help="Basecall Model", required=False, type=str, default='r941_min_high_g303')
     args = cli.parse_args()
@@ -72,7 +73,7 @@ def main():
         os.system(samtools_cov)
         f.write(samtools_cov+'\n')
         
-        scaffold_cmd = f"{scaffold_helper} {args.TopN} {args.RefFile} {assembly_dir}/{base}.coverage {assembly_dir}/{base}_scaffold.fasta {assembly_dir}/{base}_cov.csv"
+        scaffold_cmd = f"{scaffold_helper} {args.TopN} {args.MinCov} {args.RefFile} {assembly_dir}/{base}.coverage {assembly_dir}/{base}_scaffold.fasta {assembly_dir}/{base}_cov.csv"
         os.system(scaffold_cmd)
         f.write(scaffold_cmd+'\n')
         print("progress: {}/{}".format(i+1, len(files)))

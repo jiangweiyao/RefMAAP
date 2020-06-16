@@ -1,15 +1,16 @@
 #!/usr/bin/env Rscript
-## Usage is scaffold_cutter.R <topN> <fasta_file> <depth_file> <out_fasta> <out_table>
+## Usage is scaffold_cutter.R <topN> <min_cov> <fasta_file> <depth_file> <out_fasta> <out_table>
 
 library(Biostrings)
 
 args = commandArgs(trailingOnly=TRUE)
 
 topN = as.numeric(args[1])
-fasta_file = args[2]
-depth_file = args[3]
-out_fasta = args[4]
-out_table = args[5]
+min_cov = as.numeric(args[2])
+fasta_file = args[3]
+depth_file = args[4]
+out_fasta = args[5]
+out_table = args[6]
 
 depth_count <- read.table(file = depth_file, sep = "\t")
 colnames(depth_count) <- c("RefSeq", "Position", "Depth")
@@ -36,6 +37,7 @@ RefSeq_coverage <- RefSeq_coverage[order(order(RefSeq_coverage[,2], decreasing =
 
 topN_ref <- as.character(head(RefSeq_coverage, topN)[,1])
 range_list_topN <- subset(range_list, RefSeq %in% topN_ref)
+range_list_topN <- subset(range_list_topN, AveDepth > min_cov)
 write.csv(range_list_topN, out_table, row.names = FALSE)
    
 fasta <- readDNAStringSet(fasta_file)
