@@ -4,6 +4,8 @@ import sys
 import os
 import glob
 import re
+import pandas as pd
+from tabulate import tabulate
 from datetime import date
 from gooey import Gooey, GooeyParser
 
@@ -45,6 +47,7 @@ def main():
     os.system(f"mkdir -p {qc_dir}")
     os.system(f"mkdir -p {assembly_dir}")
     f=open(f"{OutputFolder}/qc.log", 'w+')
+    g=open(f"{OutputFolder}/cov.txt", 'w+')
 
     for i in range(0, len(files)):
         filec = files[i]
@@ -57,7 +60,7 @@ def main():
         f.write(fastqc_cmd+'\n')
         os.system(fastqc_cmd)
 
-        minimap2_cmd = f"minimap2 -ax map-ont {data_path}/Americas2.fasta {filec} > {assembly_dir}/{base}.sam "
+        minimap2_cmd = f"minimap2 -ax map-ont {args.RefFile} {filec} > {assembly_dir}/{base}.sam "
         f.write(minimap2_cmd+'\n')
         os.system(minimap2_cmd)
         samtools_cmd1 = f"samtools view -S -b {assembly_dir}/{base}.sam > {assembly_dir}/{base}.bam"
@@ -73,10 +76,9 @@ def main():
         os.system(samtools_cov)
         f.write(samtools_cov+'\n')
         
-        scaffold_cmd = f"{scaffold_helper} {args.TopN} {args.MinCov} {args.RefFile} {assembly_dir}/{base}.coverage {assembly_dir}/{base}_scaffold.fasta {assembly_dir}/{base}_cov.csv"
+        scaffold_cmd = f"{scaffold_helper} {args.TopN} {args.MinCov} {args.RefFile} {assembly_dir}/{base}.coverage {assembly_dir}/{base}_scaffold.fasta {assembly_dir}/{base}_cov.txt"
         os.system(scaffold_cmd)
         f.write(scaffold_cmd+'\n')
-        print("progress: {}/{}".format(i+1, len(files)))
 
         medaka_cmd = f"medaka_consensus -i {filec} -d {assembly_dir}/{base}_scaffold.fasta -o {assembly_dir}/{base}_medaka -m {args.model}"
         f.write(medaka_cmd+'\n')
@@ -85,12 +87,27 @@ def main():
         gapfixer_cmd = f"{gapfixer_helper} {assembly_dir}/{base}_scaffold.fasta {assembly_dir}/{base}_medaka/consensus.fasta {assembly_dir}/{base}_final.fasta"
         f.write(gapfixer_cmd+'\n')
         os.system(gapfixer_cmd)
+        
+        cp_cmd = f"cp {assembly_dir}/{base}_final.fasta {OutputFolder}/{base}_final.fasta"
+        f.write(cp_cmd+'\n')
+        os.system(cp_cmd)
+
+        if(os.path.isfile(f"{assembly_dir}/{base}_cov.txt")):
+            df = pd.read_csv(f"{assembly_dir}/{base}_cov.txt")
+            g.write(f"{base} Results: \n")
+            g.write(tabulate(df, headers="keys", showindex=False, tablefmt="psql", floatfmt=".2f"))
+            g.write(f"\n\n")
+        else:
+            g.write(f"{base} did not have enough aligned reads: \n\n")
+
+        print("progress: {}/{}".format(i+1, len(files)))
 
 
     multiqc_cmd = f"multiqc {qc_dir} -o {OutputFolder}"
     f.write(multiqc_cmd+'\n')
     os.system(multiqc_cmd)
     f.close()
+    #g.close()
     print(f"verbose status is {args.verbose}")
     if not args.verbose:
         os.system(f"rm -rf {qc_dir}")
